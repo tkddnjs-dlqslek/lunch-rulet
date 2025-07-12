@@ -317,35 +317,49 @@
         });
       });
     }
+    
+    canvas.addEventListener('click', function (e) {
+  // 회전 중이면 삭제 안 됨
+  if (spinTween && spinTween.isActive()) return;
 
-   // ✅ 여기에 추가
-  canvas.addEventListener('click', function(e) {
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left - radius;
-    const y = e.clientY - rect.top - radius;
-    const clickAngle = (Math.atan2(y, x) + 2 * Math.PI) % (2 * Math.PI);
-    const adjustedAngle = (clickAngle - rotationOffset + 2 * Math.PI) % (2 * Math.PI);
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const x = (e.clientX - rect.left - radius) * scaleX;
+  const y = (e.clientY - rect.top - radius) * scaleY;
+  const clickAngle = (Math.atan2(y, x) + 2 * Math.PI) % (2 * Math.PI);
+  const adjustedAngle = (clickAngle - rotationOffset + 2 * Math.PI) % (2 * Math.PI);
 
-    const total = menuRatios.reduce((a, b) => a + b, 0);
-    let startAngle = 0;
+  const total = menuRatios.reduce((a, b) => a + b, 0);
+  let startAngle = 0;
 
-    for (let i = 0; i < menuItems.length; i++) {
-      const angle = (menuRatios[i] / total) * 2 * Math.PI;
-      const endAngle = startAngle + angle;
+  for (let i = 0; i < menuItems.length; i++) {
+    const angle = (menuRatios[i] / total) * 2 * Math.PI;
+    const endAngle = startAngle + angle;
 
-      if (adjustedAngle >= startAngle && adjustedAngle < endAngle) {
-        const itemToRemove = menuItems[i];
-        if (confirm(`${itemToRemove} 메뉴를 삭제할까요?`)) {
+    if (adjustedAngle >= startAngle && adjustedAngle < endAngle) {
+      const itemToRemove = menuItems[i];
+      Swal.fire({
+        title: `❌ 삭제 확인`,
+        text: `"${itemToRemove}" 메뉴를 삭제할까요?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: '삭제',
+        cancelButtonText: '취소'
+      }).then((result) => {
+        if (result.isConfirmed) {
           menuItems.splice(i, 1);
           menuRatios.splice(i, 1);
           drawWheel();
           saveToStorage();
         }
-        break;
-      }
-      startAngle = endAngle;
+      });
+      break;
     }
-  });
+    startAngle = endAngle;
+  }
+});
+    
     
   </script>
 </body>
