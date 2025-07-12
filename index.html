@@ -1,300 +1,297 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>점심메뉴 룰렛</title>
+
+  <!-- 오픈그래프 (공유 시 미리보기) -->
+  <meta property="og:title" content="점심메뉴 룰렛" />
+  <meta property="og:description" content="오늘 점심 뭐 먹지? 룰렛으로 골라보세요!" />
+  <meta property="og:image" content="og image.png" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://your-github-username.github.io/lunch-rulet/" />
+
+  <!-- PWA 관련 -->
+  <meta name="theme-color" content="#f6f1eb" />
+  <link rel="icon" href="app icon.png" type="image/png" />
+  <link rel="manifest" href="manifest.json" />
+
+  <!-- 외부 라이브러리 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
   <style>
     body {
       background: #f6f1eb;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      font-family: 'Futura', sans-serif;
-      position: relative;
+      font-family: 'Noto Sans KR', sans-serif;
+      text-align: center;
+      padding: 20px;
       margin: 0;
-      padding: 0;
     }
 
-    .roulette-container {
-      position: relative;
-      width: 90vw;
-      max-width: 400px;
-      height: 90vw;
-      max-height: 400px;
-      margin-top: 60px;
-    }
-
-    .wheel {
-      width: 100%;
-      height: 100%;
+    #wheelCanvas {
+      width: 300px;
+      height: 300px;
       border-radius: 50%;
-      transform: rotate(0deg);
+      margin-top: 20px;
     }
 
     .pointer {
-      position: absolute;
-      top: -28px;
-      left: 50%;
-      transform: translateX(-50%) rotate(180deg);
       width: 0;
       height: 0;
       border-left: 20px solid transparent;
       border-right: 20px solid transparent;
-      border-bottom: 30px solid #8c8c8c;
-      z-index: 10;
+      border-bottom: 30px solid grey;
+      margin: 0 auto;
+      position: relative;
+      top: 10px;
     }
 
-    canvas {
-      width: 100%;
-      height: 100%;
-      border-radius: 50%;
-    }
-
-    .button-group {
-      display: flex;
-      gap: 20px;
-      margin-top: 20px;
-      flex-wrap: wrap;
-      justify-content: center;
+    .control-buttons {
+      margin-top: 30px;
     }
 
     button {
-      padding: 12px 24px;
-      font-size: 16px;
-      background-color: #c7d36f;
-      color: white;
+      padding: 10px 18px;
       border: none;
       border-radius: 8px;
+      font-size: 1rem;
+      margin: 0 8px;
       cursor: pointer;
+      transition: 0.2s ease;
     }
 
-    button.stop {
-      background-color: #e26d5c;
+    #startBtn {
+      background-color: #d3e27f;
+    }
+
+    #stopBtn {
+      background-color: #d17664;
+      color: white;
+    }
+
+    #ratioBtn {
+      background-color: #8399a4;
+      color: white;
+      position: absolute;
+      left: calc(50% + 230px); /* 원판 오른쪽 기준 고정 */
+      top: 270px;
     }
 
     #menuInput {
-      margin-top: 20px;
-      padding: 10px;
-      width: 80vw;
-      max-width: 240px;
+      padding: 8px;
       font-size: 16px;
       border-radius: 6px;
       border: 1px solid #ccc;
-    }
-
-    #adjustRatioBtn {
-      position: absolute;
-      top: 50%;
-      left: calc(50% + 240px);
-      transform: translateY(-50%);
-      padding: 12px 18px;
-      font-size: 16px;
-      background-color: #709fb0;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-
-    @keyframes confetti {
-      0% { transform: translateY(0) rotate(0deg); opacity: 1; }
-      100% { transform: translateY(300px) rotate(720deg); opacity: 0; }
-    }
-
-    .confetti {
-      position: absolute;
-      width: 10px;
-      height: 10px;
-      background-color: red;
-      animation: confetti 2s ease-out forwards;
-      z-index: 9999;
+      width: 240px;
+      margin-top: 12px;
     }
   </style>
 </head>
 <body>
-  <input id="menuInput" type="text" placeholder="메뉴 추가 후 Enter" onkeydown="addMenu(event)">
-  <div class="roulette-container">
-    <div class="pointer"></div>
-    <canvas id="wheelCanvas" class="wheel"></canvas>
+
+  <input type="text" id="menuInput" placeholder="메뉴 추가 후 Enter" />
+  <div class="pointer"></div>
+  <canvas id="wheelCanvas" width="300" height="300"></canvas>
+  <button id="ratioBtn">비율 조정</button>
+
+  <div class="control-buttons">
+    <button id="startBtn">점메추!</button>
+    <button id="stopBtn">정지</button>
   </div>
-  <div class="button-group">
-    <button onclick="startSpinning()">점메추!</button>
-    <button class="stop" onclick="stopSpinning()">정지</button>
-  </div>
-  <button id="adjustRatioBtn" onclick="openRatioDialog()">비율 조정</button>
 
   <script>
-    let menuItems = JSON.parse(localStorage.getItem('menuItems')) || ['김치찌개', '된장찌개', '비빔밥', '돈까스', '햄버거', '냉면', '파스타', '치킨'];
-    let menuRatios = JSON.parse(localStorage.getItem('menuRatios')) || Array(menuItems.length).fill(1);
-    const canvas = document.getElementById('wheelCanvas');
-    const ctx = canvas.getContext('2d');
-    const size = canvas.width = canvas.height = 400;
-    const radius = size / 2;
-    let rotationOffset = 0;
+    const canvas = document.getElementById("wheelCanvas");
+    const ctx = canvas.getContext("2d");
+    const menuInput = document.getElementById("menuInput");
+    const startBtn = document.getElementById("startBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const ratioBtn = document.getElementById("ratioBtn");
+
+    let menuItems = JSON.parse(localStorage.getItem("menus")) || [
+      "김치찌개", "된장찌개", "비빔밥", "돈까스", "햄버거", "냉면", "파스타", "치킨"
+    ];
+    let sliceRatios = new Array(menuItems.length).fill(1 / menuItems.length);
+    let totalRotation = 0;
+    let spinning = false;
     let spinTween;
-    let currentRotation = 0;
-    let sliceColors = [];
+
+    function saveMenus() {
+      localStorage.setItem("menus", JSON.stringify(menuItems));
+    }
 
     function drawWheel() {
-      ctx.clearRect(0, 0, size, size);
-      const total = menuRatios.reduce((a, b) => a + b, 0);
-      sliceColors = [];
-
+      const totalRatio = sliceRatios.reduce((a, b) => a + b, 0);
       let startAngle = 0;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
       for (let i = 0; i < menuItems.length; i++) {
-        const angle = (menuRatios[i] / total) * 2 * Math.PI;
-        const endAngle = startAngle + angle;
-        const color = `hsl(${(i * 360) / menuItems.length}, 70%, 70%)`;
-        sliceColors.push(color);
-
+        const angle = sliceRatios[i] / totalRatio * 2 * Math.PI;
         ctx.beginPath();
-        ctx.moveTo(radius, radius);
-        ctx.arc(radius, radius, radius, startAngle, endAngle);
-        ctx.fillStyle = color;
+        ctx.moveTo(150, 150);
+        ctx.fillStyle = `hsl(${(i * 360) / menuItems.length}, 70%, 75%)`;
+        ctx.arc(150, 150, 150, startAngle, startAngle + angle);
         ctx.fill();
-        ctx.closePath();
-
         ctx.save();
-        ctx.translate(radius, radius);
+        ctx.translate(150, 150);
         ctx.rotate(startAngle + angle / 2);
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#fff';
-        ctx.font = 'bold 16px sans-serif';
-        ctx.rotate(Math.PI / 2);
-        ctx.fillText(menuItems[i], 0, -radius + 40);
+        ctx.fillStyle = "#fff";
+        ctx.font = "16px sans-serif";
+        ctx.textAlign = "right";
+        ctx.fillText(menuItems[i], 135, 5);
         ctx.restore();
-
-        startAngle = endAngle;
+        startAngle += angle;
       }
     }
 
-    drawWheel();
-
-    function saveToStorage() {
-      localStorage.setItem('menuItems', JSON.stringify(menuItems));
-      localStorage.setItem('menuRatios', JSON.stringify(menuRatios));
-    }
-
-    function startSpinning() {
-      if (spinTween) spinTween.kill();
+    function spin() {
+      if (spinning) return;
+      spinning = true;
       spinTween = gsap.to(canvas, {
-        rotation: "+=720",
-        ease: "linear",
-        duration: 1,
-        repeat: -1,
+        rotation: "+=10000",
+        duration: 10000,
+        ease: "none",
         onUpdate: function () {
-          currentRotation = parseFloat(this.targets()[0]._gsap.rotation);
-          canvas.style.transform = `rotate(${currentRotation}deg)`;
-          rotationOffset = (currentRotation * Math.PI / 180) % (2 * Math.PI);
+          canvas.style.transform = `rotate(${this.targets()[0]._gsap.rotation}deg)`;
         }
       });
     }
 
     function stopSpinning() {
-      if (spinTween) spinTween.kill();
-      if (menuItems.length === 0) {
-        Swal.fire('⚠️ 메뉴가 없습니다!', '메뉴를 하나 이상 추가해주세요.', 'warning');
-        return;
-      }
-      const slowdownDuration = Math.random() * 5 + 5;
-      const extraRot = 720 + Math.random() * 360;
+      if (!spinning) return;
+      spinTween.kill();
+      const slowDownDuration = Math.random() * 5 + 5;
+      const extraRotation = 1440 + Math.random() * 360;
+
       gsap.to(canvas, {
-        rotation: `+=${extraRot}`,
-        duration: slowdownDuration,
+        rotation: `+=${extraRotation}`,
+        duration: slowDownDuration,
         ease: "power4.out",
         onUpdate: function () {
-          currentRotation = parseFloat(this.targets()[0]._gsap.rotation);
+          const currentRotation = parseFloat(this.targets()[0]._gsap.rotation);
           canvas.style.transform = `rotate(${currentRotation}deg)`;
-          rotationOffset = (currentRotation * Math.PI / 180) % (2 * Math.PI);
         },
         onComplete: function () {
-          const total = menuRatios.reduce((a, b) => a + b, 0);
-          const finalAngle = (parseFloat(currentRotation) % 360 + 360) % 360;
+          const currentRotation = parseFloat(canvas.style.transform.replace("rotate(", "").replace("deg)", ""));
+          const finalAngle = (currentRotation % 360 + 360) % 360;
           const pointerAngle = (270 - finalAngle + 360) % 360;
-          let result = '메뉴 없음';
-          let sliceAngleSum = 0;
+          const totalRatio = sliceRatios.reduce((a, b) => a + b, 0);
+          let cumulativeAngle = 0;
+          let resultIndex = 0;
 
           for (let i = 0; i < menuItems.length; i++) {
-            const sliceAngle = (menuRatios[i] / total) * 360;
-            if (pointerAngle >= sliceAngleSum && pointerAngle < sliceAngleSum + sliceAngle) {
-              result = menuItems[i];
+            const sliceAngle = sliceRatios[i] / totalRatio * 360;
+            if (pointerAngle >= cumulativeAngle && pointerAngle < cumulativeAngle + sliceAngle) {
+              resultIndex = i;
               break;
             }
-            sliceAngleSum += sliceAngle;
+            cumulativeAngle += sliceAngle;
           }
 
-          const index = menuItems.indexOf(result);
-          const color = sliceColors[index] ?? '#4CAF50';
-
-          for (let i = 0; i < 50; i++) {
-            const confetti = document.createElement('div');
-            confetti.classList.add('confetti');
-            confetti.style.backgroundColor = `hsl(${Math.random() * 360}, 100%, 70%)`;
-            confetti.style.left = `${Math.random() * window.innerWidth}px`;
-            confetti.style.top = `${Math.random() * 50}px`;
-            confetti.style.width = '8px';
-            confetti.style.height = '8px';
-            confetti.style.position = 'fixed';
-            confetti.style.zIndex = 9999;
-            confetti.style.animationDelay = `${Math.random()}s`;
-            document.body.appendChild(confetti);
-
-            setTimeout(() => {
-              confetti.remove();
-            }, 2000);
-          }
+          const selectedColor = `hsl(${(resultIndex * 360) / menuItems.length}, 70%, 75%)`;
+          const result = menuItems[resultIndex];
 
           Swal.fire({
-            title: '<h3 style="margin-bottom: 6px; font-size: 22px; color: #444">오늘의 점심은?</h3>',
-            html: `<div style="font-size: 34px; font-weight: bold; color: white; background: ${color}; padding: 18px 26px; border-radius: 12px; animation: pop 0.6s ease">${result}!</div>` +
-                  `<div style="margin-top: 10px"><img src='https://cdn-icons-png.flaticon.com/512/3159/3159066.png' width='60' height='60'></div>`,
-            iconHtml: '',
+            title: `<p style="font-size:16px;">오늘의 점심은?</p>`,
+            html: `<div style="font-size:28px; font-weight:bold; background:${selectedColor}; padding:10px; border-radius:10px; margin:10px auto; width:fit-content; color:#333;">${result}!</div>
+              <div style="font-size:20px; margin-top:12px;">🎉 NICE! 🎉</div>`,
             showConfirmButton: false,
             showCloseButton: true,
-            background: '#fff',
-            confirmButtonColor: '#4CAF50',
-            width: 360
+            background: "#fff",
+            width: 300,
+            didOpen: () => {
+              confetti();
+            }
           });
+
+          spinning = false;
         }
       });
     }
 
-    function addMenu(e) {
-      if (e.key === 'Enter') {
-        const value = e.target.value.trim();
-        if (value !== '') {
-          menuItems.push(value);
-          menuRatios.push(1);
-          e.target.value = '';
-          drawWheel();
-          saveToStorage();
-        }
+    function confetti() {
+      const count = 50;
+      for (let i = 0; i < count; i++) {
+        const el = document.createElement("div");
+        el.style.position = "fixed";
+        el.style.width = "8px";
+        el.style.height = "8px";
+        el.style.borderRadius = "50%";
+        el.style.background = `hsl(${Math.random() * 360}, 70%, 60%)`;
+        el.style.left = Math.random() * window.innerWidth + "px";
+        el.style.top = "-10px";
+        el.style.zIndex = 9999;
+        el.style.opacity = 0.8;
+        document.body.appendChild(el);
+        gsap.to(el, {
+          y: window.innerHeight + 100,
+          x: `+=${(Math.random() - 0.5) * 100}`,
+          duration: 2 + Math.random(),
+          ease: "power2.out",
+          onComplete: () => el.remove()
+        });
       }
     }
 
-    function openRatioDialog() {
-      const inputs = menuItems.map((item, idx) => {
-        return `<label>${item}</label><input type='number' min='1' value='${menuRatios[idx]}' id='ratio-${idx}' style='width: 60px; margin-bottom: 10px;'><br>`;
-      }).join('');
+    menuInput.addEventListener("keydown", e => {
+      if (e.key === "Enter" && menuInput.value.trim() !== "") {
+        menuItems.push(menuInput.value.trim());
+        sliceRatios = new Array(menuItems.length).fill(1 / menuItems.length);
+        saveMenus();
+        drawWheel();
+        menuInput.value = "";
+      }
+    });
 
-      Swal.fire({
-        title: '비율 조정',
-        html: `<form id='ratio-form'>${inputs}</form>`,
-        showCancelButton: true,
-        confirmButtonText: '적용하기',
-        preConfirm: () => {
-          menuRatios = menuItems.map((_, idx) => {
-            const val = parseFloat(document.getElementById(`ratio-${idx}`).value);
-            return isNaN(val) || val <= 0 ? 1 : val;
-          });
+    canvas.addEventListener("click", e => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left - 150;
+      const y = e.clientY - rect.top - 150;
+      const angle = (Math.atan2(y, x) + 2 * Math.PI) % (2 * Math.PI);
+      const totalRatio = sliceRatios.reduce((a, b) => a + b, 0);
+      let cumulative = 0;
+      for (let i = 0; i < menuItems.length; i++) {
+        const slice = sliceRatios[i] / totalRatio * 2 * Math.PI;
+        if (angle >= cumulative && angle < cumulative + slice) {
+          menuItems.splice(i, 1);
+          sliceRatios.splice(i, 1);
+          saveMenus();
           drawWheel();
-          saveToStorage();
+          break;
         }
+        cumulative += slice;
+      }
+    });
+
+    ratioBtn.addEventListener("click", () => {
+      const newRatios = [];
+      let total = 0;
+      for (let i = 0; i < menuItems.length; i++) {
+        const input = prompt(`${menuItems[i]}의 비율을 1~100 사이 숫자로 입력하세요`, Math.round(sliceRatios[i] * 100));
+        const num = parseInt(input);
+        if (!isNaN(num) && num > 0) {
+          newRatios.push(num);
+          total += num;
+        } else {
+          alert("잘못된 입력입니다.");
+          return;
+        }
+      }
+      sliceRatios = newRatios.map(n => n / total);
+      drawWheel();
+    });
+
+    startBtn.addEventListener("click", spin);
+    stopBtn.addEventListener("click", stopSpinning);
+
+    drawWheel();
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').then(function(reg) {
+        console.log('Service Worker Registered!', reg);
+      }).catch(function(err) {
+        console.error('Service Worker registration failed:', err);
       });
     }
   </script>
