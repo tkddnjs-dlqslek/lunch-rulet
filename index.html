@@ -1,9 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>점심메뉴 룰렛</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="app icon.png" type="image/png" />
+  <meta name="theme-color" content="#f6f1eb" />
+
+  <!-- Open Graph Meta Tags -->
+  <meta property="og:title" content="점심메뉴 룰렛" />
+  <meta property="og:description" content="오늘 점심 뭐 먹지? 룰렛으로 결정하세요!" />
+  <meta property="og:image" content="og image.png" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://yourdomain.example" />
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
@@ -295,6 +306,15 @@
           drawWheel();
           saveToStorage();
         }
+      });
+    }
+
+    // PWA Service Worker 등록
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').then(() => {
+          console.log('Service Worker Registered');
+        });
       });
     }
   </script>
